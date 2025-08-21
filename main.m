@@ -89,10 +89,7 @@ function main()
     % 询问用户是否满意拟合结果，如果不满意则进入交互式调整模式
     interactive_adjust = input('是否进入交互式参数调整模式? (y/n): ', 's');
     if strcmpi(interactive_adjust, 'y')
-        [refined_params, refined_fit] = interactiveParameterAdjustment(data_V, data_JD, optimized_params, config);
-        
-        % 计算新的分量电流
-        refined_currents = calculateCurrents(data_V, refined_params, config);
+        [refined_params, refined_fit, refined_currents] = interactiveParameterAdjustment(data_V, data_JD, optimized_params, config);
         
         % 绘制新的结果
         figure;
@@ -102,12 +99,12 @@ function main()
         displayResults(refined_params);
         
         % 保存调整后的参数
-        saveAdjustedParameters(refined_params);
+        saveAdjustedResults(refined_params, data_V, refined_currents);
     end
 end
 
 % 交互式参数调整函数
-function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V, data_JD, initial_params, config)
+function [adjusted_params, fit_results, final_currents] = interactiveParameterAdjustment(data_V, data_JD, initial_params, config)
     % 复制初始参数
     adjusted_params = initial_params;
     adjustment_factor = 1.0;
@@ -269,17 +266,16 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     fit_results.resnorm = sum(((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)).^2);
 end
 
-% 保存调整后的参数
-function saveAdjustedParameters(params)
+% 保存调整后的结果
+function saveAdjustedResults(params, V, currents)
     % 生成时间戳
     timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-    filename = sprintf('adjusted_params_%s.mat', timestamp);
-    
-    % 保存到文件
-    save(filename, 'params');
-    fprintf('参数已保存到文件: %s\n', filename);
-    
-    % 同时导出为文本文件，便于查看
+    % 保存参数到MAT文件
+    mat_filename = sprintf('adjusted_params_%s.mat', timestamp);
+    save(mat_filename, 'params');
+    fprintf('参数已保存到文件: %s\n', mat_filename);
+
+    % 同时导出参数为文本文件
     txt_filename = sprintf('adjusted_params_%s.txt', timestamp);
     fid = fopen(txt_filename, 'w');
     fprintf(fid, 'J0 = %.6e A\n', params(1));
@@ -288,6 +284,14 @@ function saveAdjustedParameters(params)
     fprintf(fid, 'k = %.6e\n', params(4));
     fclose(fid);
     fprintf('参数已导出为文本文件: %s\n', txt_filename);
+    
+    % 导出电流数据到Excel
+    T = table(V(:), currents.total(:), currents.diode(:), ...
+              currents.ohmic(:), currents.nonohmic(:), ...
+              'VariableNames', {'Voltage','Total','Diode','Ohmic','Nonohmic'});
+    xlsx_filename = sprintf('adjusted_currents_%s.xlsx', timestamp);
+    writetable(T, xlsx_filename);
+    fprintf('调整后的电流已导出到Excel文件: %s\n', xlsx_filename);
 end
 
 % 保存拟合结果
