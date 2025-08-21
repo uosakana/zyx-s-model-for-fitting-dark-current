@@ -126,12 +126,11 @@ function [adjusted_params, fit_results, final_currents] = interactiveParameterAd
     % 创建实时更新的图表
     figure('Name', '交互式参数调整', 'Position', [100, 100, 1200, 800]);
     
-    % 定义子图结构
-    subplot(2,1,1);
-    h_data = semilogy(data_V, abs(data_JD), 'bo', 'DisplayName', '测量数据');
+    subplot(2,2,[1,2]);
+    h_data = semilogy(data_V, abs(data_JD), 'bo', 'DisplayName', '测量数据', 'MarkerSize', 6);
     hold on;
     %h_fit = semilogy(data_V, abs(fit_results.JD), 'ro', 'DisplayName', '拟合结果');
-    h_fit = semilogy(data_V, abs(currents.total), 'ro', 'DisplayName', '拟合结果');
+    h_fit = semilogy(data_V, abs(currents.total), 'ro', 'DisplayName', '拟合结果', 'MarkerSize', 6);
     h_diode = semilogy(data_V, abs(currents.diode), 'b--', 'DisplayName', '二极管电流');
     h_ohmic = semilogy(data_V, abs(currents.ohmic), 'g--', 'DisplayName', '欧姆电流');
     h_nonohmic = semilogy(data_V, abs(currents.nonohmic), 'm--', 'DisplayName', '非欧姆电流');
@@ -141,14 +140,28 @@ function [adjusted_params, fit_results, final_currents] = interactiveParameterAd
     legend('Location', 'best');
     grid on;
     
-    subplot(2,1,2);
+    xlim([min(data_V) max(data_V)]);
+    ylim([min(abs(data_JD))*0.1 max(abs(data_JD))*10]);
+
+    % 第二行左侧：相对误差
+    subplot(2,2,3);
     h_error = plot(data_V, errors, 'b.-');
     xlabel('电压 (V)');
     ylabel('相对误差 (%)');
     %title(sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
     title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
     grid on;
-    
+
+    subplot(2,2,4);
+    h_data_lin = plot(data_V, data_JD, 'bo', 'DisplayName', '测量数据');
+    hold on;
+    h_fit_lin = plot(data_V, currents.total, 'ro', 'DisplayName', '拟合结果');
+    xlabel('电压 (V)');
+    ylabel('电流密度 (A)');
+    title('I-V特性曲线（线性坐标）');
+    legend('Location', 'best');
+    grid on;
+    xlim([min(data_V) max(data_V)]);
     % 显示当前参数值
     annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
         'String', sprintf('J0: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   调整步长: %.2f', ...
@@ -238,8 +251,8 @@ function [adjusted_params, fit_results, final_currents] = interactiveParameterAd
             set(h_ohmic, 'YData', abs(currents.ohmic));
             set(h_nonohmic, 'YData', abs(currents.nonohmic));
             set(h_error, 'YData', errors);
-            %title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
-            title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', avg_error));
+            set(h_fit_lin, 'YData', currents.total);
+            title(subplot(2,2,3), sprintf('拟合误差 (平均: %.2f%%)', avg_error));
             % 更新参数显示
             delete(findall(gcf, 'Type', 'annotation'));
             annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
